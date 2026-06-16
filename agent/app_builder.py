@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import threading
 from datetime import datetime
+from agent.app_builder_site import generate_site
 
 
 PROJECTS_DIR = os.path.expanduser("~/.jarvis/projects")
@@ -16,6 +17,7 @@ class AppBuilder:
         self._llm = llm
         self._projects_dir = PROJECTS_DIR
         self._generators = {}
+        self.register_generator("site", generate_site)
 
     def register_generator(self, project_type, generator_func):
         self._generators[project_type] = generator_func
