@@ -44,6 +44,17 @@ def test_project_metadata():
         assert meta["type"] == "pwa"
         assert meta["status"] == "scaffolded"
 
+def test_deliver_always_has_apk_key():
+    app = AppBuilder()
+    with tempfile.TemporaryDirectory() as tmp:
+        app._projects_dir = tmp
+        os.makedirs(os.path.join(tmp, "x", "dist"), exist_ok=True)
+        with open(os.path.join(tmp, "x", "project.json"), "w") as f:
+            json.dump({"name": "x", "type": "site", "url": "", "status": "built", "deploy_url": ""}, f)
+        result = app.deliver("x")
+        assert "apk" in result
+        assert result["apk"] is None
+
 def test_generate_calls_generator():
     app = AppBuilder()
     app._llm_analyze = lambda desc: {"type": "site", "framework": "vanilla", "features": []}

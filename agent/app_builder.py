@@ -106,10 +106,8 @@ class AppBuilder:
 
     def deliver(self, name):
         meta = self._load_meta(name)
-        out = {"name": name, "type": meta["type"], "url": meta["deploy_url"], "status": meta["status"]}
         apk_path = os.path.join(self._projects_dir, name, "dist", "app-release.apk")
-        if os.path.exists(apk_path):
-            out["apk"] = apk_path
+        out = {"name": name, "type": meta["type"], "url": meta["deploy_url"], "status": meta["status"], "apk": apk_path if os.path.exists(apk_path) else None}
         return out
 
     def list_projects(self):
