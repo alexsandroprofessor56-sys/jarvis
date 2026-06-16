@@ -8,6 +8,7 @@ import threading
 from datetime import datetime
 from agent.app_builder_site import generate_site
 from agent.app_builder_pwa import generate_pwa
+from agent.app_builder_flutter import generate_flutter
 
 
 PROJECTS_DIR = os.path.expanduser("~/.jarvis/projects")
@@ -20,6 +21,7 @@ class AppBuilder:
         self._generators = {}
         self.register_generator("site", generate_site)
         self.register_generator("pwa", generate_pwa)
+        self.register_generator("flutter", generate_flutter)
 
     def register_generator(self, project_type, generator_func):
         self._generators[project_type] = generator_func
