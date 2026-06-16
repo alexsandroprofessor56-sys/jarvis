@@ -12,6 +12,7 @@ import requests
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from agent.credential_vault import credential_save as _vault_save, credential_get as _vault_get, credential_list as _vault_list, credential_delete as _vault_delete
+from agent.app_builder import AppBuilder
 
 
 class ExtraTools:
@@ -19,6 +20,7 @@ class ExtraTools:
         self._http_server = None
         self._http_thread = None
         self.telegram_listener = None
+        self._app_builder = AppBuilder()
 
     def system_monitor(self):
         try:
@@ -493,6 +495,40 @@ class ExtraTools:
             return "Parâmetro 'service' necessário"
         return _vault_delete(service)
 
+    # === APP BUILDER ===
+    def app_builder(self, descricao=None):
+        if not descricao:
+            return "Descreva o app/site que quer criar. Ex: 'cria um app de tarefas'"
+        plan = self._app_builder.analyze(descricao)
+        name = descricao.lower().replace(" ", "-")[:30]
+        path = self._app_builder.scaffold(name, plan)
+        self._app_builder.generate(name, plan)
+        self._app_builder.build(name)
+        url = self._app_builder.deploy(name, target="local")
+        result = self._app_builder.deliver(name)
+        return json.dumps(result, indent=2)
+
+    def app_status(self, nome=None):
+        if not nome:
+            return "Use: app_status <nome-do-projeto>"
+        meta = self._app_builder.get_project(nome)
+        if not meta:
+            return "Projeto nao encontrado."
+        return json.dumps(meta, indent=2)
+
+    def app_list(self):
+        projects = self._app_builder.list_projects()
+        if not projects:
+            return "Nenhum projeto criado ainda."
+        lines = [f"• {p['name']} ({p['type']}) - {p['status']}" for p in projects]
+        return "\n".join(lines)
+
+    def app_deploy(self, nome=None, target="github"):
+        if not nome:
+            return "Use: app_deploy <nome-do-projeto> [target=github|local]"
+        url = self._app_builder.deploy(nome, target)
+        return f"Deploy de '{nome}' em: {url}"
+
 
 EXTRA_TOOLS = [
     ("system_monitor", ExtraTools.system_monitor,
@@ -618,4 +654,15 @@ EXTRA_TOOLS = [
     ("credential_delete", ExtraTools.credential_delete,
      "Remover credencial do cofre",
      {"service": {"type": "string"}}),
+    ("app_builder", ExtraTools.app_builder,
+     "Criar app/site completo a partir de descricao. Ex: 'cria um app de tarefas'",
+     {"descricao": {"type": "string"}}),
+    ("app_status", ExtraTools.app_status,
+     "Ver status de um projeto",
+     {"nome": {"type": "string"}}),
+    ("app_list", ExtraTools.app_list,
+     "Listar todos os projetos criados", {}),
+    ("app_deploy", ExtraTools.app_deploy,
+     "Fazer deploy de um projeto",
+     {"nome": {"type": "string"}, "target": {"type": "string"}}),
 ]

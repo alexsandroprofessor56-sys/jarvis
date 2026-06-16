@@ -197,6 +197,7 @@ class Orchestrator:
             (r"^(plugin|plugins)\s*(.+)?$", self._cmd_plugin),
             (r"^(o\s+que\s+aconteceu|historico|histórico|resumo\s+do\s+dia)\s*(.+)?$", self._cmd_episodic),
             (r"^(quem\s+sou|autenticar|auth|reconhecer)\s*(.+)?$", self._cmd_auth),
+            (r"^(cria|criar|gere|gerar|construa|faca\s+um\s+app|faz\s+um\s+app|crie)\s+(.+)$", self._cmd_app_builder),
         ]
 
         for pattern, handler in patterns:
@@ -427,6 +428,13 @@ class Orchestrator:
         self.log(f"⚙ Autenticando...", "system")
         result = self.tools.execute("face_auth")
         self._finalize(result)
+
+    def _cmd_app_builder(self, m):
+        desc = m.group(2).strip()
+        self.log(f"⚙ AppBuilder: {desc}", "system")
+        result = self.tools._extra.app_builder(descricao=desc)
+        self.log(f"  → {result[:300]}", "system")
+        self._finalize(f"App criado! {result[:200]}")
 
     def _finalize(self, text):
         self.state = "speaking"
