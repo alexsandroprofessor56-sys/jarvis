@@ -34,6 +34,19 @@ importlib-metadata>=6.0.0
 # Audio Advanced
 pyannote-audio>=3.1.0
 speechbrain>=0.5.15
+# Vosk Wake Word
+vosk>=0.3.45
+# STT / VAD
+webrtcvad>=2.0.10
+# TTS
+edge-tts>=6.1.0
+pyttsx3>=2.90
+# Audio I/O
+pyaudio>=0.2.14
+# API Bridge / Tool Proxy
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
 # Sandbox
 docker>=7.0.0
 # Email
