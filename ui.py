@@ -865,11 +865,15 @@ class JarvisUI(QMainWindow):
         try:
             self._cpu_bar.set_value(psutil.cpu_percent())
             mem = psutil.virtual_memory()
-            self._mem_bar.set_value(mem.percent)
+            used_gb = mem.used / 1024**3
+            total_gb = mem.total / 1024**3
+            self._mem_bar.set_value(mem.percent, f"{mem.percent:.0f}% · {used_gb:.1f}/{total_gb:.1f} GB")
             net = psutil.net_io_counters()
             net_pct = min(100, (net.bytes_sent + net.bytes_recv) / (1024 * 1024) * 5)
             self._net_bar.set_value(net_pct)
-            self._tmp_bar.set_value(psutil.sensors_temperatures().get("coretemp", [{}])[0].get("current", 0) if psutil.sensors_temperatures() else 0)
+            temps = psutil.sensors_temperatures()
+            temp = temps.get("coretemp", [{}])[0].get("current", 0) if temps else 0
+            self._tmp_bar.set_value(temp, f"{temp:.0f}°C")
             self._gpu_bar.set_value(0)
 
             uptime_s = int(time.time() - psutil.boot_time())
@@ -945,16 +949,16 @@ class JarvisUI(QMainWindow):
         cmd_row.addWidget(self._cmd_input)
         cmd_row.addWidget(send_btn)
 
-        # mic button
-        self._mic_btn = QPushButton("🎙  MICROFONE ATIVO")
+        # mic button (push-to-talk estilo WhatsApp)
+        self._mic_btn = QPushButton("🎤  PRESSIONE PARA FALAR")
         self._mic_btn.setFont(QFont(FONT_NAME, 8, QFont.Weight.Bold))
         self._mic_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: #00140a; color: {C_GREEN};
-                border: 1px solid {C_GREEN}; border-radius: 3px; padding: 4px;
+                background-color: transparent; color: {C_TEXT};
+                border: 1px solid {C_BORDER}; border-radius: 3px; padding: 4px;
                 font-family: {FONT_NAME}; font-size: 8pt;
             }}
-            QPushButton:hover {{ background-color: #002014; }}
+            QPushButton:hover {{ background-color: {C_PRI_GHO}; border: 1px solid {C_PRI}; }}
         """)
         self._mic_btn.clicked.connect(self._toggle_mic)
 
@@ -1046,29 +1050,29 @@ class JarvisUI(QMainWindow):
             self.orchestrator.process_text(text)
 
     def _toggle_mic(self):
-        active = self.orchestrator.toggle_mic()
+        active = self.orchestrator.push_to_talk()
         if active:
-            self._mic_btn.setText("🎙  MICROFONE ATIVO")
+            self._mic_btn.setText("🔴  GRAVANDO... CLIQUE PARA PARAR")
             self._mic_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: #00140a; color: {C_GREEN};
-                    border: 1px solid {C_GREEN}; border-radius: 3px; padding: 4px;
-                    font-family: {FONT_NAME}; font-size: 8pt;
+                    background-color: #1a0008; color: {C_RED};
+                    border: 2px solid {C_RED}; border-radius: 3px; padding: 4px;
+                    font-family: {FONT_NAME}; font-size: 8pt; font-weight: bold;
                 }}
-                QPushButton:hover {{ background-color: #002014; }}
+                QPushButton:hover {{ background-color: #2a0010; }}
             """)
-            self.orchestrator.hear_and_respond()
+            self._hud.set_state("listening")
         else:
-            self._mic_btn.setText("🔇  MICROFONE MUTADO")
+            self._mic_btn.setText("🎤  PRESSIONE PARA FALAR")
             self._mic_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: #140006; color: {C_MUTED};
-                    border: 1px solid {C_MUTED}; border-radius: 3px; padding: 4px;
+                    background-color: transparent; color: {C_TEXT};
+                    border: 1px solid {C_BORDER}; border-radius: 3px; padding: 4px;
                     font-family: {FONT_NAME}; font-size: 8pt;
                 }}
-                QPushButton:hover {{ background-color: #1c000a; }}
+                QPushButton:hover {{ background-color: {C_PRI_GHO}; border: 1px solid {C_PRI}; }}
             """)
-            self._hud.set_state("muted")
+            self._hud.set_state("processing")
 
     def _toggle_fullscreen(self):
         self._fullscreen = not self._fullscreen

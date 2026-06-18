@@ -12,14 +12,17 @@ DEFAULT_CONFIG = {
         "language": "pt"
     },
     "llm": {
-        "engine": "ollama",
-        "url": "http://127.0.0.1:11434",
-        "model": "qwen2.5:3b"
+        "engine": "nvidia",
+        "url": "https://integrate.api.nvidia.com/v1",
+        "model": "nvidia/nemotron-3-ultra",
+        "api_key": "",
+        "temperature": 0.7,
+        "max_tokens": 4096
     },
     "tts": {
         "engine": "edge",
-        "voice": "pt-BR-AntonioNeural",
-        "speed": 1.0
+        "voice": "pt-BR-FranciscaNeural",
+        "speed": 0.75
     },
     "vision": {
         "enabled": True,
@@ -36,9 +39,14 @@ DEFAULT_CONFIG = {
     },
     "evolution": {
         "enabled": True,
-        "max_changes_per_hour": 5,
-        "risk_limit": "medium",
+        "max_changes_per_hour": 999999,
+        "risk_limit": "high",
         "git_repo_path": os.path.expanduser("~/jarvis")
+    },
+    "wake_word": {
+        "enabled": True,
+        "device": None,
+        "model": "tiny"
     },
     "telegram": {
         "enabled": False,
@@ -94,6 +102,8 @@ def load():
         for k, v in DEFAULT_CONFIG.items():
             if k not in cfg:
                 cfg[k] = v
+        if not cfg.get("llm", {}).get("api_key"):
+            cfg.setdefault("llm", {})["api_key"] = os.environ.get("JARVIS_NVIDIA_API_KEY") or os.environ.get("NVIDIA_API_KEY", "")
         return cfg
     except Exception:
         return dict(DEFAULT_CONFIG)

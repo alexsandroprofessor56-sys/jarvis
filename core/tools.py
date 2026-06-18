@@ -6,87 +6,185 @@ import pyperclip
 import webbrowser
 import json
 from web.search import WebSearch
-from memory.store import MemoryStore
-from vision.screen_capture import ScreenCapture
 from core.extra_tools import ExtraTools, EXTRA_TOOLS
+from core.tool_router import ToolRouter
 from agent.computer_use import ComputerUse
 
 
 class ToolRegistry:
-    def __init__(self, memory=None, vision=None, knowledge=None,
-                 semantic_memory=None, episodic_memory=None,
-                 procedural_memory=None, agent=None, browser=None,
-                 gui_automation=None, face_auth=None, scheduler=None,
-                 sandbox=None, plugin_loader=None, learner=None,
-                 self_evolution=None):
+    def __init__(self, orchestrator):
+        self._o = orchestrator
         self.tools = {}
-        self.memory = memory or MemoryStore()
-        self.vision = vision or ScreenCapture()
-        self.knowledge = knowledge
-        self.semantic = semantic_memory
-        self.episodic = episodic_memory
-        self.procedural = procedural_memory
-        self.agent = agent
-        self.browser = browser
-        self.gui = gui_automation
-        self.face_auth = face_auth
-        self.scheduler = scheduler
-        self.sandbox = sandbox
-        self.plugins = plugin_loader
-        self.learner = learner
-        self.evolution = self_evolution
         self._extra = ExtraTools()
-        self._computer = ComputerUse()
+        self._computer = ComputerUse(orchestrator=orchestrator)
         self._register_all()
 
-    def _register_all(self):
-        self.register("open_app", self.tool_open_app, "Abrir um aplicativo pelo nome (firefox, code, terminal...)")
-        self.register("run_command", self.tool_run_command, "Executar um comando no terminal (shell)")
-        self.register("search_web", self.tool_search_web, "Pesquisar na internet por informação")
-        self.register("type_text", self.tool_type_text, "Digitar texto como teclado")
-        self.register("keyboard_hotkey", self.tool_keyboard_hotkey, "Pressionar teclas (ctrl+c, alt+tab)")
-        self.register("mouse_move", self.tool_mouse_move, "Mover mouse para (x, y)")
-        self.register("mouse_click", self.tool_mouse_click, "Clicar (left, right, middle)")
-        self.register("mouse_scroll", self.tool_mouse_scroll, "Rolar tela")
-        self.register("screenshot", self.tool_screenshot, "Capturar print da tela")
-        self.register("analyze_screen", self.tool_analyze_screen, "Analisar tela via IA de visão")
-        self.register("web_fetch", self.tool_web_fetch, "Ler conteúdo de uma URL")
-        self.register("web_open", self.tool_web_open, "Abrir URL no navegador")
-        self.register("remember", self.tool_remember, "Salvar informação na memória (chave=valor)")
-        self.register("recall", self.tool_recall, "Recuperar informação da memória pela chave")
-        self.register("list_files", self.tool_list_files, "Listar arquivos em diretório")
-        self.register("get_clipboard", self.tool_get_clipboard, "Ler área de transferência")
-        self.register("get_system_info", self.tool_get_system_info, "Info do sistema operacional")
+    @property
+    def memory(self):
+        return self._o.base_memory
 
-        self.register("knowledge_query", self.tool_knowledge_query, "Buscar conhecimento na base vetorial (RAG)")
-        self.register("knowledge_learn_file", self.tool_knowledge_learn_file, "Ingerir arquivo na base de conhecimento (PDF, DOCX, TXT, imagem)")
-        self.register("knowledge_learn_dir", self.tool_knowledge_learn_dir, "Ingerir diretório inteiro na base de conhecimento")
-        self.register("semantic_remember", self.tool_semantic_remember, "Memorizar um fato semanticamente")
-        self.register("semantic_recall", self.tool_semantic_recall, "Buscar fatos na memória semântica")
-        self.register("episodic_query", self.tool_episodic_query, "Consultar memória episódica (o que aconteceu)")
-        self.register("procedural_learn", self.tool_procedural_learn, "Aprender um procedimento")
-        self.register("procedural_recall", self.tool_procedural_recall, "Recuperar um procedimento")
-        self.register("agent_run", self.tool_agent_run, "Executar tarefa complexa com planejamento multi-etapas")
-        self.register("browser_navigate", self.tool_browser_navigate, "Navegar para uma URL com Playwright")
-        self.register("browser_search", self.tool_browser_search, "Pesquisar no Google e extrair resultados")
-        self.register("browser_click", self.tool_browser_click, "Clicar em um elemento da página por seletor CSS")
-        self.register("browser_fill", self.tool_browser_fill, "Preencher campo de formulário")
-        self.register("browser_extract", self.tool_browser_extract, "Extrair texto da página atual")
-        self.register("gui_find_click_image", self.tool_gui_find_click_image, "Localizar imagem na tela e clicar")
-        self.register("gui_find_click_text", self.tool_gui_find_click_text, "Localizar texto na tela (OCR) e clicar")
-        self.register("face_register", self.tool_face_register, "Registrar rosto para autenticação")
-        self.register("face_auth", self.tool_face_auth, "Autenticar por reconhecimento facial")
-        self.register("reminder_add", self.tool_reminder_add, "Adicionar lembrete (delay em minutos)")
-        self.register("reminder_cron", self.tool_reminder_cron, "Agendar tarefa com expressão cron")
-        self.register("reminder_list", self.tool_reminder_list, "Listar lembretes ativos")
-        self.register("sandbox_python", self.tool_sandbox_python, "Executar código Python em sandbox")
-        self.register("sandbox_bash", self.tool_sandbox_bash, "Executar comando Bash em sandbox")
-        self.register("sandbox_javascript", self.tool_sandbox_javascript, "Executar JavaScript em sandbox")
-        self.register("plugin_list", self.tool_plugin_list, "Listar plugins carregados")
-        self.register("learner_stats", self.tool_learner_stats, "Estatísticas de aprendizado")
-        self.register("self_evolve", self.tool_self_evolve, "Auto-melhorar o código do Jarvis (ler, editar, versionar, reiniciar)")
-        self.register("computer_use", self.tool_computer_use, "Controlar o PC como uma pessoa (ver tela, clicar, digitar, abrir apps)")
-        self.register("computer_stop", self.tool_computer_stop, "Parar a tarefa do ComputerUseAgent")
+    @property
+    def vision(self):
+        return self._o.vision
+
+    @property
+    def knowledge(self):
+        return self._o.knowledge
+
+    @property
+    def semantic(self):
+        return self._o.semantic
+
+    @property
+    def episodic(self):
+        return self._o.episodic
+
+    @property
+    def procedural(self):
+        return self._o.procedural
+
+    @property
+    def browser(self):
+        return self._o.browser
+
+    @property
+    def gui(self):
+        return self._o.gui_automation
+
+    @property
+    def face_auth(self):
+        return self._o.face_auth
+
+    @property
+    def scheduler(self):
+        return self._o.scheduler
+
+    @property
+    def sandbox(self):
+        return self._o.sandbox
+
+    @property
+    def plugins(self):
+        return self._o.plugins
+
+    @property
+    def learner(self):
+        return self._o.learner
+
+    @property
+    def agent(self):
+        return self._o.agent
+
+    @agent.setter
+    def agent(self, val):
+        self._o._agent = val
+
+    @property
+    def evolution(self):
+        return self._o.evolve_agent
+
+    def _register_all(self):
+        self.register("open_app", self.tool_open_app,
+            "Abrir aplicativo instalado no sistema pelo nome. Use quando o usuário pedir para abrir/iniciar/executar um programa (firefox, code, terminal, spotify, etc).")
+        self.register("run_command", self.tool_run_command,
+            "Executar comandos shell no terminal. Use para rodar programas de terminal, scripts, comandos de sistema (ls, cd, git, apt, pip, etc).")
+        self.register("search_web", self.tool_search_web,
+            "Pesquisar na internet. Use quando o usuário perguntar sobre algo atual, notícias, clima, ou informação que você não sabe de cabeça.")
+        self.register("type_text", self.tool_type_text,
+            "Digitar texto como se fosse teclado. Use quando o usuário pedir para digitar/escrever algo em campos de texto ou formulários.")
+        self.register("keyboard_hotkey", self.tool_keyboard_hotkey,
+            "Pressionar combinação de teclas (ctrl+c, alt+tab, ctrl+v). Use para atalhos de teclado, copiar/colar, alternar janelas.")
+        self.register("mouse_move", self.tool_mouse_move,
+            "Mover cursor do mouse para coordenadas (x, y) na tela.")
+        self.register("mouse_click", self.tool_mouse_click,
+            "Clicar com botão do mouse (left, right, middle) na posição atual do cursor.")
+        self.register("mouse_scroll", self.tool_mouse_scroll,
+            "Rolar a tela para cima ou para baixo com o scroll do mouse.")
+        self.register("screenshot", self.tool_screenshot,
+            "Capturar print da tela inteira. Use antes de analyze_screen para dar contexto visual ao Jarvis.")
+        self.register("analyze_screen", self.tool_analyze_screen,
+            "Analisar o print da tela usando IA de visão computacional e descrever o que vê. Use depois de screenshot.")
+        self.register("web_fetch", self.tool_web_fetch,
+            "Baixar e ler o conteúdo textual de uma URL. Use para extrair informação de páginas web, artigos, documentação.")
+        self.register("web_open", self.tool_web_open,
+            "Abrir URL no navegador padrão do sistema para o usuário ver. Use quando o usuário pedir para 'abrir site X' ou 'ir para Y'.")
+        self.register("hermes_delegate", self.tool_hermes_delegate,
+            "Delegar tarefa complexa para o Hermes (cérebro avançado). Use para planejamento multi-etapas, pesquisa profunda, código, análise, automação web, skills, memória persistente. Args: task (str), use_voice (bool).")
+        self.register("remember", self.tool_remember,
+            "Salvar informação na memória chave-valor do Jarvis. Use quando o usuário disser 'lembre que ...' ou 'guarda isso'.")
+        self.register("recall", self.tool_recall,
+            "Recuperar informação salva na memória pela chave. Use quando o usuário perguntar algo que foi memorizado antes.")
+        self.register("list_files", self.tool_list_files,
+            "Listar arquivos e pastas em um diretório. Use quando o usuário pedir para ver/conferir/listar arquivos.")
+        self.register("get_clipboard", self.tool_get_clipboard,
+            "Ler o conteúdo atual da área de transferência (copiado pelo usuário).")
+        self.register("get_system_info", self.tool_get_system_info,
+            "Obter informações do sistema operacional: nome, versão, arquitetura, hostname.")
+        self.register("knowledge_query", self.tool_knowledge_query,
+            "Buscar conhecimento na base vetorial (RAG). Use quando o usuário perguntar sobre algo que você já aprendeu/indexou antes.")
+        self.register("knowledge_learn_file", self.tool_knowledge_learn_file,
+            "Ingerir arquivo na base de conhecimento (PDF, DOCX, TXT, imagem). Use quando o usuário pedir para aprender/estudar/indexar um arquivo específico.")
+        self.register("knowledge_learn_dir", self.tool_knowledge_learn_dir,
+            "Ingerir diretório inteiro na base de conhecimento. Use quando o usuário pedir para aprender/estudar uma pasta inteira.")
+        self.register("semantic_remember", self.tool_semantic_remember,
+            "Memorizar um fato semântico sobre o usuário ou o mundo. Use para informações que devem ser lembradas a longo prazo.")
+        self.register("semantic_recall", self.tool_semantic_recall,
+            "Buscar fatos na memória semântica por relevância. Use quando precisar lembrar de algo aprendido sobre o usuário.")
+        self.register("episodic_query", self.tool_episodic_query,
+            "Consultar memória episódica (histórico de eventos recentes). Use quando o usuário perguntar 'o que aconteceu', 'histórico', 'resumo do dia'.")
+        self.register("procedural_learn", self.tool_procedural_learn,
+            "Ensinar ao Jarvis um procedimento com passos. Use para aprender rotinas que o usuário repete com frequência.")
+        self.register("procedural_recall", self.tool_procedural_recall,
+            "Recuperar um procedimento aprendido. Use quando o usuário pedir para executar algo que foi ensinado como procedimento.")
+        self.register("procedural_replay", self.tool_procedural_replay,
+            "Executar um procedimento salvo na memória procedural pelo nome. Use quando um procedimento já foi aprendido e precisa ser repetido.")
+        self.register("agent_run", self.tool_agent_run,
+            "Executar tarefa complexa com planejamento multi-etapas. Use para tarefas que exigem múltiplas ações coordenadas.")
+        self.register("browser_navigate", self.tool_browser_navigate,
+            "Navegar o navegador controlado (Playwright) para uma URL específica.")
+        self.register("browser_search", self.tool_browser_search,
+            "Pesquisar no Google via navegador controlado e extrair os resultados da página.")
+        self.register("browser_click", self.tool_browser_click,
+            "Clicar em um elemento da página atual por seletor CSS (classe, ID, tag).")
+        self.register("browser_fill", self.tool_browser_fill,
+            "Preencher campo de formulário na página atual com um valor (por seletor CSS).")
+        self.register("browser_extract", self.tool_browser_extract,
+            "Extrair todo o texto visível da página atual no navegador controlado.")
+        self.register("gui_find_click_image", self.tool_gui_find_click_image,
+            "Localizar uma imagem na tela por template matching e clicar nela. Use para clicar em botões/ícones sem seletor CSS.")
+        self.register("gui_find_click_text", self.tool_gui_find_click_text,
+            "Localizar texto na tela via OCR e clicar nele. Use para clicar em elementos que têm texto visível.")
+        self.register("face_register", self.tool_face_register,
+            "Registrar o rosto do usuário para autenticação facial futura. Use quando o usuário pedir para cadastrar/configurar reconhecimento facial.")
+        self.register("face_auth", self.tool_face_auth,
+            "Autenticar o usuário por reconhecimento facial. Use quando o usuário pedir para verificar/autenticar identidade.")
+        self.register("reminder_add", self.tool_reminder_add,
+            "Criar um lembrete com delay em minutos. Use quando o usuário disser 'lembrete ... em X minutos'.")
+        self.register("reminder_cron", self.tool_reminder_cron,
+            "Agendar tarefa com expressão cron para execução recorrente. Use para rotinas diárias/semanais.")
+        self.register("reminder_list", self.tool_reminder_list,
+            "Listar todos os lembretes ativos e agendados.")
+        self.register("sandbox_python", self.tool_sandbox_python,
+            "Executar código Python. Use quando o usuário pedir para rodar código ou testar script.")
+        self.register("sandbox_bash", self.tool_sandbox_bash,
+            "Executar comandos Bash em ambiente isolado (sandbox) sem afetar o sistema real.")
+        self.register("sandbox_javascript", self.tool_sandbox_javascript,
+            "Executar código JavaScript em ambiente isolado (sandbox).")
+        self.register("plugin_list", self.tool_plugin_list,
+            "Listar todos os plugins carregados pelo sistema de plugins do Jarvis.")
+        self.register("learner_stats", self.tool_learner_stats,
+            "Ver estatísticas de aprendizado: comandos mais usados, taxa de sucesso, padrões.")
+        self.register("self_evolve", self.tool_self_evolve,
+            "Auto-melhorar o código do Jarvis (analisar, editar, versionar, reiniciar). Use quando o usuário sugerir melhoria ou pedir para o Jarvis se atualizar.")
+        self.register("computer_use", self.tool_computer_use,
+            "Controlar o computador como uma pessoa faria: ver tela, clicar, digitar, abrir apps. Use para tarefas complexas de automação GUI.")
+        self.register("computer_stop", self.tool_computer_stop,
+            "Parar a tarefa em andamento do ComputerUseAgent imediatamente.")
+        self.register("hermes_delegate", self.tool_hermes_delegate,
+            "Delegar tarefa complexa para o Hermes (cérebro avançado): planejamento multi-etapas, skills auto-evolutivas, browser automation, code execution, web search, file ops. Use para tarefas que exigem raciocínio profundo, pesquisa, programação, automação web complexa. Args: task (str), use_voice (bool).")
+        self.register("hermes_tool", self.tool_hermes_tool,
+            "Chamar ferramenta específica do Hermes (browser avançado, web_search, terminal, code_execution, skills, memória, visão). Args: name (str) nome da ferramenta, args (dict) argumentos da ferramenta.")
+        self._register_hermes_tools()
         for name, method, desc, schema in EXTRA_TOOLS:
             bound = method.__get__(self._extra, type(self._extra))
             self.register(name, bound, desc, schema)
@@ -119,6 +217,7 @@ class ToolRegistry:
             "episodic_query": {"hour_range": {"type": "integer"}, "episode_type": {"type": "string"}},
             "procedural_learn": {"name": {"type": "string"}, "steps": {"type": "array", "items": {"type": "string"}}, "description": {"type": "string"}, "category": {"type": "string"}},
             "procedural_recall": {"name": {"type": "string"}, "category": {"type": "string"}},
+            "procedural_replay": {"name": {"type": "string"}},
             "agent_run": {"task": {"type": "string"}},
             "browser_navigate": {"url": {"type": "string"}},
             "browser_search": {"query": {"type": "string"}},
@@ -138,6 +237,8 @@ class ToolRegistry:
             "plugin_list": {},
             "learner_stats": {},
             "self_evolve": {"goal": {"type": "string"}, "auto_approve": {"type": "boolean"}},
+            "hermes_delegate": {"task": {"type": "string"}, "use_voice": {"type": "boolean"}},
+            "hermes_tool": {"name": {"type": "string"}, "args": {"type": "object"}},
         }
         if name in schemas:
             params["properties"] = schemas[name]
@@ -156,12 +257,17 @@ class ToolRegistry:
                     "knowledge_learn_file", "knowledge_query", "agent_run", "browser_navigate",
                     "browser_search", "browser_fill", "gui_find_click_image", "gui_find_click_text",
                     "sandbox_python", "sandbox_bash", "sandbox_javascript", "face_register",
-                    "self_evolve"):
+                    "self_evolve", "hermes_delegate", "hermes_tool"):
             params["required"] = list(params["properties"].keys())
         return {"type": "function", "function": {"name": name, "description": info["description"], "parameters": params}}
 
     def get_ollama_tools(self):
         return [self._tool_schema(name, info) for name, info in self.tools.items()]
+
+    def get_relevant_tools(self, query, top_n=12):
+        if not hasattr(self, '_router') or self._router is None:
+            self._router = ToolRouter(self.tools)
+        return self._router.get_relevant_schemas(query, top_n=top_n)
 
     def execute(self, name, **kwargs):
         tool = self.tools.get(name)
@@ -395,6 +501,20 @@ class ToolRegistry:
             return f"{proc['name']}: {proc['description']}\n{steps}"
         return "Procedimento não encontrado."
 
+    def tool_procedural_replay(self, name=None):
+        if not self.procedural or not name:
+            return "Memória procedural não disponível"
+        proc = self.procedural.recall_procedure(name=name)
+        if not proc:
+            return f"Procedimento '{name}' não encontrado."
+        import agent.computer_use
+        cu = agent.computer_use.ComputerUse(llm=self.orchestrator.llm if self.orchestrator else None,
+                                            orchestrator=self.orchestrator)
+        result = cu.replay_from_memory(name)
+        if result.get("success"):
+            return f"Replay '{name}' concluído: {result['steps']} passos"
+        return f"Falha no replay: {result.get('error', 'erro')}"
+
     def tool_agent_run(self, task=None):
         if not self.agent or not task:
             return "Agente autônomo não disponível"
@@ -517,6 +637,87 @@ class ToolRegistry:
         if result:
             return json.dumps(result, indent=2)
         return "Tarefa em andamento. Use computer_stop para parar."
+
+    def tool_hermes_delegate(self, task=None, use_voice=False):
+        if not task:
+            return "Tarefa não fornecida."
+        try:
+            import subprocess
+            cmd = ["hermes", "-z", task]
+            if use_voice:
+                cmd.extend(["--personality", "helpful"])
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd="/home/alexkali")
+            output = result.stdout or result.stderr
+            return output[:5000] if output else "Hermes executado sem saída."
+        except subprocess.TimeoutExpired:
+            return "Hermes excedeu tempo limite (5 min)."
+        except Exception as e:
+            return f"Erro ao chamar Hermes: {e}"
+
+    def tool_hermes_tool(self, name=None, args=None):
+        if not name:
+            return "Nome da ferramenta não fornecido."
+        try:
+            import requests
+            payload = {"args": args or {}}
+            resp = requests.post(f"http://127.0.0.1:8766/hermes/tools/{name}",
+                                 json=payload, timeout=120)
+            if resp.status_code == 404:
+                return f"Ferramenta '{name}' não encontrada no Hermes."
+            data = resp.json()
+            result = data.get("result", data)
+            if isinstance(result, str):
+                return result[:5000]
+            import json
+            return json.dumps(result, ensure_ascii=False)[:5000]
+        except requests.ConnectionError:
+            return "Hermes Tool Proxy não está rodando (porta 8766). Execute hermes_tool_proxy.py primeiro."
+        except Exception as e:
+            return f"Erro ao chamar ferramenta Hermes '{name}': {e}"
+
+    def _register_hermes_tools(self):
+        """Auto-register all tools from the Hermes Tool Proxy."""
+        try:
+            import requests
+            resp = requests.get("http://127.0.0.1:8766/hermes/tools", timeout=5)
+            if resp.status_code == 200:
+                tools = resp.json().get("tools", [])
+                for t in tools:
+                    name = t["name"]
+                    if name in self.tools:
+                        continue
+                    desc = t.get("description", "")
+                    schema = t.get("schema", {})
+                    params = schema.get("parameters", {})
+                    props = params.get("properties", {})
+                    self.register(name, self._make_hermes_handler(name), desc, props)
+        except Exception:
+            pass
+
+    def _make_hermes_handler(self, tool_name):
+        def handler(**kwargs):
+            return self._hermes_tool_call(tool_name, kwargs)
+        return handler
+
+    def _hermes_tool_call(self, name, args=None):
+        """Call a tool on the Hermes Tool Proxy."""
+        try:
+            import requests
+            payload = {"args": args or {}}
+            resp = requests.post(f"http://127.0.0.1:8766/hermes/tools/{name}",
+                                 json=payload, timeout=120)
+            if resp.status_code == 404:
+                return None
+            data = resp.json()
+            result = data.get("result", data)
+            if isinstance(result, str):
+                try:
+                    result = json.loads(result)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            return result
+        except Exception:
+            return None
 
     def tool_computer_stop(self):
         self._computer.stop()

@@ -1,0 +1,18 @@
+[Unit]
+Description=JARVIS Voice Assistant Daemon
+After=graphical-session.target pulseaudio.service
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/home/alexkali/jarvis/venv/bin/python /home/alexkali/jarvis/jarvis_daemon.py
+Restart=always
+RestartSec=10
+Environment=PATH=/home/alexkali/jarvis/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/home/alexkali
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=PULSE_RUNTIME_PATH=/run/user/1000/pulse
+
+[Install]
+WantedBy=default.target

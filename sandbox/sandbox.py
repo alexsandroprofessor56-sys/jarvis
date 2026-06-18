@@ -8,42 +8,17 @@ import traceback
 class CodeSandbox:
     def __init__(self):
         self._globals = {"__builtins__": __builtins__}
-        self._allowed_modules = {
-            "math", "random", "json", "datetime", "re", "collections",
-            "itertools", "functools", "statistics", "string", "typing",
-        }
 
     def execute_python(self, code, timeout=5):
         if not code.strip():
             return ""
-
-        tree = ast.parse(code)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    name = node.func.attr
-                elif isinstance(node.func, ast.Name):
-                    name = node.func.id
-                else:
-                    name = ""
-                if name in ("__import__", "exec", "eval", "open", "compile"):
-                    return f"[BLOQUEADO] {name} não é permitido"
-                if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-                    if node.func.value.id == "os":
-                        return "[BLOQUEADO] os não é permitido"
-                    if node.func.value.id == "subprocess":
-                        return "[BLOQUEADO] subprocess não é permitido"
-                    if node.func.value.id == "shutil":
-                        return "[BLOQUEADO] shutil não é permitido"
-
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
-
         local_scope = self._globals.copy()
-
         try:
+            tree = ast.parse(code)
             if isinstance(tree, ast.Module) and len(tree.body) == 1 and isinstance(tree.body[0], ast.Expr):
                 compiled = compile(ast.Expression(tree.body[0].value), '<sandbox>', 'eval')
                 result = eval(compiled, local_scope)

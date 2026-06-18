@@ -1,21 +1,36 @@
 import json
 import os
 import sqlite3
+import threading
 from datetime import datetime
 
 from config.settings import MEMORY_DIR
 
 
 class MemoryStore:
-    def __init__(self, db_path=None):
+    def __init__(self, db_path=None, max_cache=200):
         if db_path is None:
             os.makedirs(MEMORY_DIR, exist_ok=True)
             db_path = os.path.join(MEMORY_DIR, "memory.db")
         self.db_path = db_path
+        self.max_cache = max_cache
+
+        self._cache = []
+        self._cache_lock = threading.Lock()
+        self._mem_cache = {}
+        self._dirty = False
+
         self._init_db()
+        self._load_cache()
+
+    def _conn(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
 
     def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = self._conn()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,8 +51,22 @@ class MemoryStore:
         conn.commit()
         conn.close()
 
+    def _load_cache(self):
+        conn = self._conn()
+        rows = conn.execute(
+            "SELECT role, content FROM conversations ORDER BY id DESC LIMIT ?",
+            (self.max_cache,)
+        ).fetchall()
+        conn.close()
+        rows.reverse()
+        self._cache = [{"role": r[0], "content": r[1]} for r in rows]
+
     def add_message(self, role, content):
-        conn = sqlite3.connect(self.db_path)
+        with self._cache_lock:
+            self._cache.append({"role": role, "content": content})
+            if len(self._cache) > self.max_cache:
+                self._cache = self._cache[-self.max_cache:]
+        conn = self._conn()
         conn.execute(
             "INSERT INTO conversations (role, content, created_at) VALUES (?, ?, ?)",
             (role, content, datetime.now().isoformat())
@@ -46,24 +75,21 @@ class MemoryStore:
         conn.close()
 
     def get_history(self, limit=50):
-        conn = sqlite3.connect(self.db_path)
-        rows = conn.execute(
-            "SELECT role, content FROM conversations ORDER BY id DESC LIMIT ?",
-            (limit,)
-        ).fetchall()
-        conn.close()
-        rows.reverse()
-        return [{"role": r[0], "content": r[1]} for r in rows]
+        with self._cache_lock:
+            return self._cache[-limit:]
 
     def clear_history(self):
-        conn = sqlite3.connect(self.db_path)
+        with self._cache_lock:
+            self._cache.clear()
+        conn = self._conn()
         conn.execute("DELETE FROM conversations")
         conn.commit()
         conn.close()
 
     def remember(self, key, value):
+        self._mem_cache[key] = value
         now = datetime.now().isoformat()
-        conn = sqlite3.connect(self.db_path)
+        conn = self._conn()
         conn.execute(
             """INSERT INTO memories (key, value, created_at, updated_at)
                VALUES (?, ?, ?, ?)
@@ -74,21 +100,27 @@ class MemoryStore:
         conn.close()
 
     def recall(self, key):
-        conn = sqlite3.connect(self.db_path)
+        if key in self._mem_cache:
+            return self._mem_cache[key]
+        conn = self._conn()
         row = conn.execute(
             "SELECT value FROM memories WHERE key = ?", (key,)
         ).fetchone()
         conn.close()
-        return row[0] if row else None
+        val = row[0] if row else None
+        if val is not None:
+            self._mem_cache[key] = val
+        return val
 
     def forget(self, key):
-        conn = sqlite3.connect(self.db_path)
+        self._mem_cache.pop(key, None)
+        conn = self._conn()
         conn.execute("DELETE FROM memories WHERE key = ?", (key,))
         conn.commit()
         conn.close()
 
     def get_all_memories(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = self._conn()
         rows = conn.execute(
             "SELECT key, value, updated_at FROM memories ORDER BY updated_at DESC"
         ).fetchall()

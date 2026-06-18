@@ -6,3 +6,15 @@ __pycache__/
 dist/
 build/
 .*.swp
+.env
+.env.*
+config.json
+*.log
+.DS_Store
+venv/
+.venv/
+models/vosk-model-*/
+*.bin
+*.fst
+*.ie
+models/
